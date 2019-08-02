@@ -218,7 +218,7 @@ if __name__ == '__main__':
 
             offset = -batch_size
             num_batch = len(all_images) // batch_size
-            for i in tqdm(range(num_batch), total=num_batch, leave=False):
+            for i in tqdm(range(num_batch), total=num_batch):
                 n = np.random.uniform(-1.0, 1.0, [batch_size, z_dim]).astype(np.float32)
 
                 offset = (offset + batch_size) % len(all_images)
@@ -254,7 +254,7 @@ if __name__ == '__main__':
     with tf.Session(config=config) as sess:
         num_batch = num_generate // batch_size
         last_batch_size = num_generate % batch_size
-        for i in tqdm(range(num_batch), leave=False):
+        for i in tqdm(range(num_batch)):
             n = np.random.uniform(-1.0, 1.0, [batch_size, z_dim]).astype(np.float32)
             gen_imgs = sess.run(g.g_outputs, feed_dict={g.z: n, g.is_training: False})
             gen_imgs = (gen_imgs + 1) / 2
