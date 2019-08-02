@@ -19,8 +19,8 @@ root_annots = "../input/annotation/Annotation/"
 all_images = os.listdir(root_images)
 
 num_iteration = 500000
-batch_size = 4
-z_dim = 1000
+batch_size = 16
+z_dim = 100
 
 num_generate = 10000
 
