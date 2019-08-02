@@ -242,8 +242,7 @@ if __name__ == '__main__':
                     imgs = [img[:, :, :] for img in gen_img]
                     gen_img = montage(imgs)
                     plt.axis('off')
-                    plt.imshow(gen_img)
-                    plt.show()
+                    plt.savefig(os.path.join(OUTPUT_DIR, 'gs_{}.png'.format(gs)))
 
         plt.plot(loss['d'], label='Discriminator')
         plt.plot(loss['g'], label='Generator')
