@@ -251,6 +251,7 @@ if __name__ == '__main__':
         plt.legend(loc='upper right')
         plt.show()
 
+    with tf.Session(config=config) as sess:
         num_batch = num_generate // batch_size
         last_batch_size = num_generate % batch_size
         for i in tqdm(range(num_batch), leave=False):
