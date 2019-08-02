@@ -185,9 +185,9 @@ class Graph:
         self.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(self.update_ops):
             self.d_train_op = tf.train.AdamOptimizer(learning_rate=2e-4, beta1=0.5) \
-                .minimize(self.d_loss, var_list=self.vars_d)
+                .minimize(self.d_loss, var_list=self.vars_d, global_step=self.global_step)
             self.g_train_op = tf.train.AdamOptimizer(learning_rate=2e-4, beta1=0.5) \
-                .minimize(self.g_loss, var_list=self.vars_g, global_step=self.global_step)
+                .minimize(self.g_loss, var_list=self.vars_g)
 
         tf.summary.scalar('generator_loss', self.g_loss)
         tf.summary.scalar('discriminator_loss', self.d_loss)
@@ -203,50 +203,43 @@ if __name__ == '__main__':
     config.gpu_options.allow_growth = True
     config.allow_soft_placement = True
 
-    hooks = [tf.train.StopAtStepHook(last_step=num_iteration),
-             tf.train.CheckpointSaverHook(LOGDIR,
-                                          save_steps=1000,
-                                          saver=tf.train.Saver(max_to_keep=1))]
+    sv = tf.train.Supervisor()
+    saver = sv.saver
 
-    with tf.train.MonitoredTrainingSession(hooks=hooks,
-                                           config=config) as sess:
+    with sv.managed_session(config=config) as sess:
         loss = {'d': [], 'g': []}
-        z_samples = []
+        z_samples = np.random.uniform(-1.0, 1.0, [batch_size, z_dim]).astype(np.float32)
 
-        while not sess.should_stop():
-            z_samples = np.random.uniform(-1.0, 1.0, [batch_size, z_dim]).astype(np.float32)
+        offset = -batch_size
 
-            offset = -batch_size
-            num_batch = len(all_images) // batch_size
-            for i in tqdm(range(num_batch), total=num_batch):
-                n = np.random.uniform(-1.0, 1.0, [batch_size, z_dim]).astype(np.float32)
+        for i in tqdm(range(num_iteration)):
+            n = np.random.uniform(-1.0, 1.0, [batch_size, z_dim]).astype(np.float32)
 
-                offset = (offset + batch_size) % len(all_images)
-                batch = np.array(
-                    [read_image(img, IMAGE_SIZE, IMAGE_SIZE)
-                     for img in all_images[offset:offset + batch_size]])
-                batch = (batch - 0.5) * 2  # batch regularize.
+            offset = (offset + batch_size) % len(all_images)
+            batch = np.array(
+                [read_image(img, IMAGE_SIZE, IMAGE_SIZE)
+                 for img in all_images[offset:offset + batch_size]])
+            batch = (batch - 0.5) * 2  # batch regularize.
 
-                d_ls, g_ls = sess.run([g.d_loss, g.g_loss], feed_dict={g.x: batch, g.z: n, g.is_training: True})
-                loss['d'].append(d_ls)
-                loss['g'].append(g_ls)
+            d_ls, g_ls = sess.run([g.d_loss, g.g_loss], feed_dict={g.x: batch, g.z: n, g.is_training: True})
+            loss['d'].append(d_ls)
+            loss['g'].append(g_ls)
 
-                gs = sess.run(g.global_step)
-                sess.run(g.d_train_op, feed_dict={g.x: batch, g.z: n, g.is_training: True})
-                sess.run(g.g_train_op, feed_dict={g.x: batch, g.z: n, g.is_training: True})
+            gs = sess.run(g.global_step)
+            sess.run(g.d_train_op, feed_dict={g.x: batch, g.z: n, g.is_training: True})
+            sess.run(g.g_train_op, feed_dict={g.x: batch, g.z: n, g.is_training: True})
 
-                if gs % 10000 == 0:
-                    print(gs, d_ls, g_ls)
-                    gen_img = sess.run(g.g_outputs, feed_dict={g.z: z_samples, g.is_training: False})
-                    gen_img = (gen_img + 1) / 2
-                    imgs = [img[:, :, :] for img in gen_img]
-                    gen_img = montage(imgs)
-                    plt.axis('off')
-                    plt.imshow(gen_img)
-                    plt.show()
-                    imsave(os.path.join(OUTPUT_DIR, f'gs_{gs}.png'), gen_img)
+            if gs % 10000 == 0:
+                print(gs, d_ls, g_ls)
+                gen_img = sess.run(g.g_outputs, feed_dict={g.z: z_samples, g.is_training: False})
+                gen_img = (gen_img + 1) / 2
+                imgs = [img[:, :, :] for img in gen_img]
+                gen_img = montage(imgs)
+                plt.axis('off')
+                plt.imshow(gen_img)
+                plt.show()
+                imsave(os.path.join(OUTPUT_DIR, f'gs_{gs}.png'), gen_img)
 
-    with tf.Session(config=config) as sess:
         plt.plot(loss['d'], label='Discriminator')
         plt.plot(loss['g'], label='Generator')
         plt.legend(loc='upper right')
