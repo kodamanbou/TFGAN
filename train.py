@@ -246,12 +246,12 @@ if __name__ == '__main__':
                     plt.show()
                     imsave(os.path.join(OUTPUT_DIR, f'gs_{gs}.png'), gen_img)
 
+    with tf.Session(config=config) as sess:
         plt.plot(loss['d'], label='Discriminator')
         plt.plot(loss['g'], label='Generator')
         plt.legend(loc='upper right')
         plt.show()
 
-    with tf.Session(config=config) as sess:
         num_batch = num_generate // batch_size
         last_batch_size = num_generate % batch_size
         for i in tqdm(range(num_batch)):
