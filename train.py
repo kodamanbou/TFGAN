@@ -251,7 +251,7 @@ if __name__ == '__main__':
             n = np.random.uniform(-1.0, 1.0, [batch_size, z_dim]).astype(np.float32)
             gen_imgs = sess.run(g.g_outputs, feed_dict={g.z: n, g.is_training: False})
             gen_imgs = (gen_imgs + 1) / 2
-            for j in range(num_batch):
+            for j in range(batch_size):
                 imsave(os.path.join(GEN_DIR, f'sample_{i}_{j}.png'), gen_imgs[j])
 
         for i in range(last_batch_size):
