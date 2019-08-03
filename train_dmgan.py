@@ -92,7 +92,7 @@ discriminated = Flatten()(x)
 
 discriminator = Model([dog, dog_name], discriminated)
 discriminator.get_layer('conv').trainable = False
-discriminator.get_layer('conv').set_weights([np.array([[[-1.0]]], [[[1.0]]])])
+discriminator.get_layer('conv').set_weights([np.array([[[[-1.0]]], [[[1.0]]]])])
 discriminator.compile(optimizer='adam', loss='binary_crossentropy')
 
 discriminator.summary()
