@@ -8,20 +8,15 @@ import os
 import xml.etree.ElementTree as ET
 from PIL import Image
 import matplotlib.pyplot as plt
-from imageio import imsave
-import shutil
+import zipfile
 
 root_images = "../input/all-dogs/all-dogs/"
 root_annots = "../input/annotation/Annotation/"
-GEN_DIR = 'generated_dogs'
 
 all_images = os.listdir(root_images)
 
 
 def prepro():
-    if not os.path.exists(GEN_DIR):
-        os.mkdir(GEN_DIR)
-
     breeds = glob.glob(root_annots + '*')
     annotation = []
 
@@ -170,11 +165,14 @@ for k in range(it):
     if ep >= 32: lr = 0.001
     if ep > 256: ep = 256
 
+z = zipfile.PyZipFile('images.zip', mode='w')
 for i in range(10000):
     noise = np.zeros(10000)
     noise[np.random.randint(10000)] = 1
     img = generator.predict(noise.reshape((-1, 10000)))[0].reshape((-1, 64, 64, 3))
     img = Image.fromarray(img.astype('uint8').reshape((64, 64, 3)))
-    imsave(os.path.join(GEN_DIR, f'sample_{i}.png'), img)
-
-shutil.make_archive('images', 'zip', GEN_DIR)
+    f = str(i) + '.png'
+    img.save(f, 'PNG')
+    z.write(f)
+    os.remove(f)
+z.close()
