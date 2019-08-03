@@ -1,7 +1,6 @@
 import glob
 from keras.models import Model
 from keras.layers import Input, Dense, Conv2D, Reshape, Flatten, concatenate, UpSampling2D
-from keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import LearningRateScheduler
 from keras.optimizers import SGD, Adam
 import numpy as np
