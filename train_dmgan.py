@@ -171,7 +171,6 @@ for k in range(it):
     if ep > 256: ep = 256
 
 for i in range(10000):
-    generator.trainable = False
     noise = np.zeros(10000)
     noise[np.random.randint(10000)] = 1
     img = generator.predict(noise.reshape((-1, 10000)))[0].reshape((-1, 64, 64, 3))
