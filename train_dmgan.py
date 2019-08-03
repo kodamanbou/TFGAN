@@ -146,7 +146,7 @@ for i in range(10000):
     train[i, i] = 1
 zeros = np.zeros((10000, 12288))
 
-ep = 1.
+ep = 1
 it = 9
 lr = 5e-3
 
@@ -166,9 +166,6 @@ for k in range(it):
         plt.imshow(img)
     plt.show()
 
-    ep *= 2
-    if ep >= 32: lr = 0.001
-    if ep > 256: ep = 256
     ep *= 2
     if ep >= 32: lr = 0.001
     if ep > 256: ep = 256
