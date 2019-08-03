@@ -106,7 +106,7 @@ for k in range(5):
     annealer = LearningRateScheduler(lambda x: lr)
     h = discriminator.fit([zeros, train_x], train_y, epochs=10, batch_size=256,
                           callbacks=[annealer], verbose=0)
-    print('Epoch', (k + 1) * 10, '/30- loss=', h.history['loss'][-1])
+    print('Epoch', (k + 1) * 10, '/50- loss=', h.history['loss'][-1])
     if h.history['loss'][-1] < 0.533:
         lr = 0.1
 
