@@ -131,7 +131,7 @@ x = generator(gan_input)
 gan_output = discriminator(x)
 
 gan = Model(gan_input, gan_output)
-gan.get_layer('model_1').get_layer('conv').set_weights([np.array([[[[-1]]], [[[255.]]]])])
+gan.get_layer(index=2).get_layer('conv').set_weights([np.array([[[[-1]]], [[[255.]]]])])
 gan.compile(optimizer=Adam(5), loss='mean_squared_error')
 gan.summary()
 
