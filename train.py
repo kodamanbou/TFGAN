@@ -220,6 +220,7 @@ if __name__ == '__main__':
             gs = sess.run(g.global_step)
             sess.run(g.d_train_op, feed_dict={g.x: batch, g.z: n, g.is_training: True})
             sess.run(g.g_train_op, feed_dict={g.x: batch, g.z: n, g.is_training: True})
+            sess.run(g.g_train_op, feed_dict={g.x: batch, g.z: n, g.is_training: True})
 
             if gs % 10000 == 0:
                 print(gs, d_ls, g_ls)
