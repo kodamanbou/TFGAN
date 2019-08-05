@@ -7,11 +7,9 @@ from imageio import imsave
 import glob
 from PIL import Image
 import xml.etree.ElementTree as ET
-import shutil
+import zipfile
 
 IMAGE_SIZE = 64
-OUTPUT_DIR = 'samples_dogs'
-GEN_DIR = 'generated_dogs'
 LOGDIR = 'logdir'
 root_images = "../input/all-dogs/all-dogs/"
 root_annots = "../input/annotation/Annotation/"
@@ -21,34 +19,24 @@ all_images = os.listdir(root_images)
 num_iteration = 1000000
 batch_size = 8
 z_dim = 100
-
 num_generate = 10000
+
+breed_map = {}
 
 
 def prepro():
-    if not os.path.exists(OUTPUT_DIR):
-        os.mkdir(OUTPUT_DIR)
-
-    if not os.path.exists(GEN_DIR):
-        os.mkdir(GEN_DIR)
-
     breeds = glob.glob(root_annots + '*')
     annotation = []
 
     for b in breeds:
         annotation += glob.glob(b + '/*')
 
-    map = {}
     for annot in annotation:
         breed = annot.split('/')[-2]
         index = breed.split('-')[0]
-        map.setdefault(index, breed)
+        breed_map.setdefault(index, breed)
 
-    print('Total breeds：{len(breed_map)}')
-    return map
-
-
-breed_map = prepro()
+    print(f'Total breeds：{len(breed_map)}')
 
 
 def bounding_box(image):
@@ -189,14 +177,11 @@ class Graph:
             self.g_train_op = tf.train.AdamOptimizer(learning_rate=2e-4, beta1=0.5) \
                 .minimize(self.g_loss, var_list=self.vars_g)
 
-        tf.summary.scalar('generator_loss', self.g_loss)
-        tf.summary.scalar('discriminator_loss', self.d_loss)
-        self.merged = tf.summary.merge_all()
-
 
 if __name__ == '__main__':
     print('Training start.')
     g = Graph()
+    prepro()
 
     config = tf.ConfigProto()
     config.log_device_placement = True
@@ -207,6 +192,13 @@ if __name__ == '__main__':
     saver = sv.saver
 
     with sv.managed_session(config=config) as sess:
+        def generate_dogs(bs):
+            n = np.random.uniform(-1.0, 1.0, [batch_size, z_dim]).astype(np.float32)
+            gen_imgs = sess.run(g.g_outputs, feed_dict={g.z: n, g.is_training: False})
+            gen_imgs = (gen_imgs + 1) / 2
+            return gen_imgs
+
+
         loss = {'d': [], 'g': []}
         z_samples = np.random.uniform(-1.0, 1.0, [batch_size, z_dim]).astype(np.float32)
 
@@ -238,7 +230,6 @@ if __name__ == '__main__':
                 plt.axis('off')
                 plt.imshow(gen_img)
                 plt.show()
-                imsave(os.path.join(OUTPUT_DIR, f'gs_{gs}.png'), gen_img)
 
         plt.plot(loss['d'], label='Discriminator')
         plt.plot(loss['g'], label='Generator')
@@ -247,19 +238,20 @@ if __name__ == '__main__':
 
         num_batch = num_generate // batch_size
         last_batch_size = num_generate % batch_size
-        for i in tqdm(range(num_batch)):
-            n = np.random.uniform(-1.0, 1.0, [batch_size, z_dim]).astype(np.float32)
-            gen_imgs = sess.run(g.g_outputs, feed_dict={g.z: n, g.is_training: False})
-            gen_imgs = (gen_imgs + 1) / 2
-            for j in range(batch_size):
-                imsave(os.path.join(GEN_DIR, f'sample_{i}_{j}.png'), gen_imgs[j])
+        z = zipfile.PyZipFile('images.zip', mode='w')
 
-        for i in range(last_batch_size):
-            n = np.random.uniform(-1.0, 1.0, [batch_size, z_dim]).astype(np.float32)
-            gen_imgs = sess.run(g.g_outputs, feed_dict={g.z: n, g.is_training: False})
-            gen_imgs = (gen_imgs + 1) / 2
-            imsave(os.path.join(GEN_DIR, f'sample_{num_batch}_{i}.png'), gen_imgs[i])
+        for i, img in tqdm(enumerate(generate_dogs(batch_size))):
+            f = f'sample_{i}.png'
+            imsave(f, img)
+            z.write(f)
+            os.remove(f)
+
+        for j, img in tqdm(enumerate(generate_dogs(last_batch_size))):
+            f = f'sample_last_{j}.png'
+            imsave(f, img)
+            z.write(f)
+            os.remove(f)
+
+        z.close()
 
     print('Training end.')
-
-    shutil.make_archive('images', 'zip', GEN_DIR)

@@ -149,7 +149,7 @@ for k in range(it):
     annealer = LearningRateScheduler(lambda x: lr)
     h = gan.fit(train, zeros, batch_size=256, epochs=ep,
                 callbacks=[annealer], verbose=0)
-    print('loss: ', h.history['loss'][-1])
+    print('Epoch: ', (k + 1), '     loss: ', h.history['loss'][-1])
     plt.figure(figsize=(15, 3))
     for j in range(5):
         xx = np.zeros(10000)
