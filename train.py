@@ -76,6 +76,7 @@ def generator(z, is_training=False):
     momentum = 0.9
     with tf.variable_scope('generator'):
         h0 = tf.layers.dense(z, units=4 * 4 * 512)
+        h0 = tf.layers.dropout(inputs=h0, rate=0.4, training=is_training)
         h0 = tf.reshape(h0, shape=[-1, 4, 4, 512])
         h0 = tf.nn.relu(tf.layers.batch_normalization(h0, training=is_training, momentum=momentum))
 
