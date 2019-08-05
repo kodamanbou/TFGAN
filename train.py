@@ -200,7 +200,8 @@ if __name__ == '__main__':
                 gen_img = (gen_img + 1) / 2
                 for j, img in enumerate(gen_img):
                     plt.subplot(1, sample_size, j + 1)
-                    img = Image.fromarray(np.asarray(img).astype('uint8').reshape((64, 64, 3)))
+                    img = np.array(img).clip(0, 1)
+                    img = Image.fromarray(img.astype('uint8'))
                     plt.axis('off')
                     plt.imshow(img)
                 plt.show()
