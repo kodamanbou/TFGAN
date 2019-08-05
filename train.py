@@ -171,7 +171,7 @@ if __name__ == '__main__':
 
 
         loss = {'d': [], 'g': []}
-        z_samples = np.random.uniform(-1.0, 1.0, [sample_size, z_dim]).astype(np.float32)
+        z_samples = np.random.uniform(-1.0, 1.0, [batch_size, z_dim]).astype(np.float32)
 
         offset = -batch_size
 
@@ -198,10 +198,9 @@ if __name__ == '__main__':
                 plt.figure(figsize=(15, 3))
                 gen_img = sess.run(g.g_outputs, feed_dict={g.z: z_samples, g.is_training: False})
                 gen_img = (gen_img + 1) / 2
-                for j, img in enumerate(gen_img):
+                for j, img in enumerate(gen_img[:sample_size]):
                     plt.subplot(1, sample_size, j + 1)
                     img = np.array(img).clip(0, 1)
-                    img = Image.fromarray(img.astype('uint8'))
                     plt.axis('off')
                     plt.imshow(img)
                 plt.show()
