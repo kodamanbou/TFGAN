@@ -18,6 +18,7 @@ all_images = os.listdir(root_images)
 
 num_iteration = 1000000
 batch_size = 8
+sample_size = 5
 z_dim = 100
 num_generate = 10000
 
@@ -69,36 +70,6 @@ def read_image(image_name, height, width):
 
     image = np.array(image.resize((height, width)))
     return image / 255.
-
-
-def montage(images):
-    if isinstance(images, list):
-        images = np.array(images)
-    img_h = images.shape[1]
-    img_w = images.shape[2]
-    n_plots = int(np.ceil(np.sqrt(images.shape[0])))
-    if len(images.shape) == 4 and images.shape[3] == 3:
-        m = np.ones(
-            (images.shape[1] * n_plots + n_plots + 1,
-             images.shape[2] * n_plots + n_plots + 1, 3)) * 0.5
-    elif len(images.shape) == 4 and images.shape[3] == 1:
-        m = np.ones(
-            (images.shape[1] * n_plots + n_plots + 1,
-             images.shape[2] * n_plots + n_plots + 1, 1)) * 0.5
-    elif len(images.shape) == 3:
-        m = np.ones(
-            (images.shape[1] * n_plots + n_plots + 1,
-             images.shape[2] * n_plots + n_plots + 1)) * 0.5
-    else:
-        raise ValueError('Could not parse image shape of {}'.format(images.shape))
-    for i in range(n_plots):
-        for j in range(n_plots):
-            this_filter = i * n_plots + j
-            if this_filter < images.shape[0]:
-                this_img = images[this_filter]
-                m[1 + i + i * img_h:1 + i + (i + 1) * img_h,
-                1 + j + j * img_w:1 + j + (j + 1) * img_w] = this_img
-    return m
 
 
 def generator(z, is_training=False):
@@ -193,14 +164,14 @@ if __name__ == '__main__':
 
     with sv.managed_session(config=config) as sess:
         def generate_dogs(bs):
-            n = np.random.uniform(-1.0, 1.0, [batch_size, z_dim]).astype(np.float32)
+            n = np.random.uniform(-1.0, 1.0, [bs, z_dim]).astype(np.float32)
             gen_imgs = sess.run(g.g_outputs, feed_dict={g.z: n, g.is_training: False})
             gen_imgs = (gen_imgs + 1) / 2
             return gen_imgs
 
 
         loss = {'d': [], 'g': []}
-        z_samples = np.random.uniform(-1.0, 1.0, [batch_size, z_dim]).astype(np.float32)
+        z_samples = np.random.uniform(-1.0, 1.0, [sample_size, z_dim]).astype(np.float32)
 
         offset = -batch_size
 
@@ -224,12 +195,13 @@ if __name__ == '__main__':
 
             if gs % 10000 == 0:
                 print(gs, d_ls, g_ls)
+                plt.figure(figsize=(15, 3))
                 gen_img = sess.run(g.g_outputs, feed_dict={g.z: z_samples, g.is_training: False})
                 gen_img = (gen_img + 1) / 2
-                imgs = [img[:, :, :] for img in gen_img]
-                gen_img = montage(imgs)
-                plt.axis('off')
-                plt.imshow(gen_img)
+                for img in gen_img:
+                    img = Image.fromarray(img.astype('uint8'))
+                    plt.axis('off')
+                    plt.imshow(img)
                 plt.show()
 
         plt.plot(loss['d'], label='Discriminator')
