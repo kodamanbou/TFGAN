@@ -105,7 +105,7 @@ training_op = optimizer.minimize(loss)
 
 init = tf.global_variables_initializer()
 
-config = tf.ConfigProto()
+config = tf.compat.v1.ConfigProto()
 config.log_device_placement = True
 config.gpu_options.allow_growth = True
 config.allow_soft_placement = True
