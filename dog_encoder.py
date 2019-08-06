@@ -113,6 +113,7 @@ config.allow_soft_placement = True
 
 with tf.Session(config=config) as sess:
     print('Training start.')
+    prepro()
     init.run()
     for epoch in range(n_epochs):
         n_batches = len(all_images) // batch_size
