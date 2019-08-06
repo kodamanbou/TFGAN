@@ -73,9 +73,9 @@ hidden5 = tf.layers.flatten(hidden4)
 hidden5 = tf.layers.dense(hidden5, units=n_hidden5_units)
 
 hidden6_mean = tf.layers.dense(hidden5, n_hidden5_units)
-hidden6_gamma = tf.layers.dense(hidden5, n_hidden5_units)
-noise = tf.random_normal(tf.shape(hidden6_gamma), dtype=tf.float32)
-hidden6 = hidden6_mean + tf.exp(0.5 * hidden6_gamma) * noise
+hidden6_sigma = tf.layers.dense(hidden5, n_hidden5_units)
+noise = tf.random_normal(tf.shape(hidden6_sigma), dtype=tf.float32)
+hidden6 = hidden6_mean + hidden6_sigma * noise
 
 hidden7 = tf.layers.dense(hidden6, n_hidden5_units)
 hidden7 = tf.reshape(hidden7, [-1, 4, 4, 512])
@@ -95,8 +95,9 @@ outputs = tf.nn.sigmoid(logits)
 
 xentropy = tf.nn.sigmoid_cross_entropy_with_logits(labels=X, logits=logits)
 reconstruction_loss = tf.reduce_sum(xentropy)
+eps = 1e-10
 latent_loss = 0.5 * tf.reduce_sum(
-    tf.exp(hidden6_gamma) + tf.square(hidden6_mean) - 1 - hidden6_gamma
+    tf.square(hidden6_sigma) + tf.square(hidden6_mean) - 1 - tf.log(eps + tf.square(hidden6_sigma))
 )
 loss = reconstruction_loss + latent_loss
 
@@ -105,7 +106,7 @@ training_op = optimizer.minimize(loss)
 
 init = tf.global_variables_initializer()
 
-config = tf.compat.v1.ConfigProto()
+config = tf.ConfigProto()
 config.log_device_placement = True
 config.gpu_options.allow_growth = True
 config.allow_soft_placement = True
@@ -122,7 +123,6 @@ with tf.Session(config=config) as sess:
                 read_image(img, image_size, image_size)
                 for img in all_images[offset:offset + batch_size]
             ])
-            X_batch = (X_batch - 0.5) * 2
             sess.run(training_op, feed_dict={X: X_batch, is_training: True})
             loss_val, reconstruction_loss_val, latent_loss_val = sess.run([loss, reconstruction_loss, latent_loss],
                                                                           feed_dict={X: X_batch, is_training: True})
@@ -132,7 +132,6 @@ with tf.Session(config=config) as sess:
         # plot.
         sample_rnd = np.random.normal(size=[5, n_hidden5_units])
         sample_outputs = outputs.eval(feed_dict={hidden6: sample_rnd, is_training: False})
-        sample_outputs = (sample_outputs + 1) / 2
         plt.figure(figsize=(15, 3))
         for i, sample in enumerate(sample_outputs):
             plt.subplot(1, 5, i + 1)
@@ -144,7 +143,6 @@ with tf.Session(config=config) as sess:
     # Generate.
     codings_rnd = np.random.normal(size=[n_generates, n_hidden5_units])
     outputs_val = outputs.eval(feed_dict={hidden6: codings_rnd, is_training: False})
-    outputs_val = (outputs_val + 1) / 2
 
     z = zipfile.PyZipFile('images.zip', mode='w')
     for j, img in enumerate(outputs_val):
