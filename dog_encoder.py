@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 from PIL import Image
 import zipfile
 from imageio import imsave
+import matplotlib.pyplot as plt
 
 image_size = 64
 n_epochs = 50
@@ -111,6 +112,7 @@ config.gpu_options.allow_growth = True
 config.allow_soft_placement = True
 
 with tf.Session(config=config) as sess:
+    print('Training start.')
     init.run()
     for epoch in range(n_epochs):
         n_batches = len(all_images) // batch_size
@@ -128,13 +130,26 @@ with tf.Session(config=config) as sess:
                   reconstruction_loss_val, "\tLatent loss:", latent_loss_val)
             saver.save(sess, "./my_model_variational.ckpt")
 
+        # plot.
+        sample_rnd = np.random.normal(size=[5, n_hidden5_units])
+        sample_outputs = outputs.eval(feed_dict={hidden6: sample_rnd, is_training: False})
+        sample_outputs = (sample_outputs + 1) / 2
+        plt.figure(figsize=(15, 3))
+        for i, sample in enumerate(sample_outputs):
+            plt.subplot(1, 5, i + 1)
+            sample = np.array(sample).clip(0, 1)
+            plt.axis('off')
+            plt.imshow(sample)
+        plt.show()
+
+    # Generate.
     codings_rnd = np.random.normal(size=[n_generates, n_hidden5_units])
-    outputs_val = outputs.eval(feed_dict={hidden6: codings_rnd})
+    outputs_val = outputs.eval(feed_dict={hidden6: codings_rnd, is_training: False})
     outputs_val = (outputs_val + 1) / 2
 
     z = zipfile.PyZipFile('images.zip', mode='w')
-    for i, img in enumerate(outputs_val):
-        f = f'sample_{i}.png'
+    for j, img in enumerate(outputs_val):
+        f = f'sample_{j}.png'
         imsave(f, img)
         z.write(f)
         os.remove(f)
