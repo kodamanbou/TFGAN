@@ -104,7 +104,6 @@ optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
 training_op = optimizer.minimize(loss)
 
 init = tf.global_variables_initializer()
-saver = tf.train.Saver()
 
 config = tf.ConfigProto()
 config.log_device_placement = True
@@ -129,7 +128,6 @@ with tf.Session(config=config) as sess:
                                                                           feed_dict={X: X_batch, is_training: True})
             print("\r{}".format(epoch), "Train total loss:", loss_val, "\tReconstruction loss:",
                   reconstruction_loss_val, "\tLatent loss:", latent_loss_val)
-            saver.save(sess, "./my_model_variational.ckpt")
 
         # plot.
         sample_rnd = np.random.normal(size=[5, n_hidden5_units])
