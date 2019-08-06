@@ -70,7 +70,7 @@ hidden4 = tf.layers.conv2d(hidden3, kernel_size=5, filters=512, strides=2, paddi
 hidden4 = tf.nn.leaky_relu(tf.layers.batch_normalization(hidden4, training=is_training))
 
 hidden5 = tf.layers.flatten(hidden4)
-hidden5 = tf.layers.dense(hidden5, units=n_hidden5_units)
+hidden5 = tf.layers.dense(hidden5, n_hidden5_units)
 
 hidden6_mean = tf.layers.dense(hidden5, n_hidden5_units)
 hidden6_sigma = tf.layers.dense(hidden5, n_hidden5_units)
