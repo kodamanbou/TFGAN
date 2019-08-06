@@ -112,6 +112,12 @@ config.gpu_options.allow_growth = True
 config.allow_soft_placement = True
 
 with tf.Session(config=config) as sess:
+    def gen_dogs(bs):
+        codings_rnd = np.random.normal(size=[bs, n_hidden5_units])
+        outputs_val = outputs.eval(feed_dict={hidden6: codings_rnd, is_training: False})
+        return outputs_val
+
+
     print('Training start.')
     prepro()
     init.run()
@@ -141,12 +147,18 @@ with tf.Session(config=config) as sess:
         plt.show()
 
     # Generate.
-    codings_rnd = np.random.normal(size=[n_generates, n_hidden5_units])
-    outputs_val = outputs.eval(feed_dict={hidden6: codings_rnd, is_training: False})
-
+    n_batches = n_generates // batch_size
+    n_last_batch_size = n_generates % batch_size
     z = zipfile.PyZipFile('images.zip', mode='w')
-    for j, img in enumerate(outputs_val):
-        f = f'sample_{j}.png'
+    for i in range(n_batches):
+        for j, img in enumerate(gen_dogs(batch_size)):
+            f = f'sample_{i}_{j}.png'
+            imsave(f, img)
+            z.write(f)
+            os.remove(f)
+
+    for k, img in enumerate(gen_dogs(n_last_batch_size)):
+        f = f'sample_last_{k}.png'
         imsave(f, img)
         z.write(f)
         os.remove(f)
