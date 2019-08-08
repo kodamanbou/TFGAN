@@ -137,10 +137,11 @@ with tf.Session(config=config) as sess:
                 for img in all_images[offset:offset + batch_size]
             ])
             sess.run(training_op, feed_dict={X: X_batch, is_training: True})
-            loss_val, reconstruction_loss_val, latent_loss_val = sess.run([loss, reconstruction_loss, latent_loss],
-                                                                          feed_dict={X: X_batch, is_training: True})
+            loss_val, reconstruction_loss_val, latent_loss_val, sparsity_loss_val = sess.run(
+                [loss, reconstruction_loss, latent_loss, sparsity_loss],
+                feed_dict={X: X_batch, is_training: True})
             print("\r{}".format(epoch), "Train total loss:", loss_val, "\tReconstruction loss:",
-                  reconstruction_loss_val, "\tLatent loss:", latent_loss_val)
+                  reconstruction_loss_val, "\tLatent loss:", latent_loss_val, "\tSparsity loss:", sparsity_loss_val)
 
         # plot.
         sample_rnd = np.random.normal(size=[5, n_hidden5_units])
