@@ -82,6 +82,7 @@ hidden6_mean = tf.layers.dense(hidden5, n_hidden5_units)
 hidden6_sigma = tf.layers.dense(hidden5, n_hidden5_units)
 noise = tf.random_normal(tf.shape(hidden6_sigma), dtype=tf.float32)
 hidden6 = hidden6_mean + hidden6_sigma * noise
+hidden6 = tf.nn.sigmoid(hidden6)
 
 hidden7 = tf.layers.dense(hidden6, n_hidden5_units)
 hidden7 = tf.reshape(hidden7, [-1, 4, 4, 512])
