@@ -95,8 +95,7 @@ outputs = tf.nn.sigmoid(logits)
 
 hidden5_mean = tf.reduce_mean(hidden5, axis=0)
 sparsity_loss = tf.reduce_sum(kl_divergence(sparsity_target, hidden5_mean))
-xentropy = tf.nn.sigmoid_cross_entropy_with_logits(labels=X, logits=logits)
-reconstruction_loss = tf.reduce_sum(xentropy)
+reconstruction_loss = tf.reduce_mean(tf.square(outputs - X))
 loss = reconstruction_loss + sparsity_weight * sparsity_loss
 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
 training_op = optimizer.minimize(loss)
