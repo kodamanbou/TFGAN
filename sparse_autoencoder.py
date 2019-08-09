@@ -15,7 +15,7 @@ learning_rate = 0.001
 sparsity_target = 0.1
 sparsity_weight = 0.2
 n_generates = 10000
-n_hidden5_units = 4 * 4 * 512
+n_hidden5_units = batch_size * 4 * 4 * 512
 
 root_images = "../input/all-dogs/all-dogs/"
 root_annots = "../input/annotation/Annotation/"
