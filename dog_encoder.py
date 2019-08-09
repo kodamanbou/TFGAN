@@ -9,7 +9,7 @@ from imageio import imsave
 import matplotlib.pyplot as plt
 
 image_size = 64
-n_epochs = 200
+n_epochs = 300
 batch_size = 256
 learning_rate = 0.001
 n_generates = 10000
