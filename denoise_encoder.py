@@ -4,20 +4,21 @@ import os
 import glob
 import xml.etree.ElementTree as ET
 from PIL import Image
+import zipfile
+from imageio import imsave
 import matplotlib.pyplot as plt
-import random
 
 image_size = 64
-n_epochs = 300
-batch_size = 256
-learning_rate = 0.001
+n_epochs = 10
+batch_size = 128
+learning_rate = 0.01
 dropout_rate = 0.3
 n_generates = 10000
 n_hidden_units = 4 * 4 * 512
 
 root_images = "../input/all-dogs/all-dogs/"
 root_annots = "../input/annotation/Annotation/"
-all_image_paths = os.listdir(root_images)
+all_images = os.listdir(root_images)
 
 
 def prepro():
@@ -37,83 +38,46 @@ def prepro():
     return breed_map
 
 
-def get_bounding_cropped():
-    images = []
+def read_image(image_name, height, width):
+    image = Image.open(os.path.join(root_images, image_name))
+    image = np.array(image.resize((height, width)))
+    return image / 255.
+
+
+def _parse_fn(filename):
     breed_map = prepro()
-    for filename in all_image_paths:
-        bpath = root_annots + str(breed_map[filename.split("_")[0]]) + "/" + str(filename.split(".")[0])
-        tree = ET.parse(bpath)
-        root = tree.getroot()
-        objects = root.findall('object')
-        for o in objects:
-            bndbox = o.find('bndbox')  # reading bound box
-            xmin = int(bndbox.find('xmin').text)
-            ymin = int(bndbox.find('ymin').text)
-            xmax = int(bndbox.find('xmax').text)
-            ymax = int(bndbox.find('ymax').text)
+    bpath = root_annots + str(breed_map[filename.split("_")[0]]) + "/" + str(filename.split(".")[0])
+    tree = ET.parse(bpath)
+    root = tree.getroot()
+    objects = root.findall('object')
+    for o in objects:
+        bndbox = o.find('bndbox')  # reading bound box
+        xmin = int(bndbox.find('xmin').text)
+        ymin = int(bndbox.find('ymin').text)
+        xmax = int(bndbox.find('xmax').text)
+        ymax = int(bndbox.find('ymax').text)
 
-        bbox = [ymin, xmin, ymax, xmax]
-        image = Image.open(root_images + filename)
-        images.append(np.asarray(image))
+    bbox = (xmin, ymin, xmax, ymax)
 
-    return np.asarray(images)
+    image = tf.image.decode_jpeg(tf.read_file(root_images + filename))
+    image = tf.image.crop_and_resize(image, bbox, crop_size=(64, 64))
+    image = tf.image.random_flip_left_right(image)
+    image = tf.image.random_flip_up_down(image)
+    image = tf.image.random_hue(image, 0.08)
+    image = tf.image.random_saturation(image, 0.6, 1.6)
+    image = tf.image.random_brightness(image, 0.05)
+    image = tf.image.random_contrast(image, 0.7, 1.3)
+    image = tf.image.rot90(image, tf.random_uniform(shape=[], minval=0, maxval=4, dtype=tf.int32))
 
-
-def flip(x: tf.Tensor) -> tf.Tensor:
-    x = tf.image.random_flip_left_right(x)
-    x = tf.image.random_flip_up_down(x)
-
-    return x
-
-
-def color(x: tf.Tensor) -> tf.Tensor:
-    x = tf.image.random_hue(x, 0.08)
-    x = tf.image.random_saturation(x, 0.6, 1.6)
-    x = tf.image.random_brightness(x, 0.05)
-    x = tf.image.random_contrast(x, 0.7, 1.3)
-    return x
+    return tf.cast(image, tf.float32)
 
 
-def rotate(x: tf.Tensor) -> tf.Tensor:
-    return tf.image.rot90(x, tf.random_uniform(shape=[], minval=0, maxval=4, dtype=tf.int32))
-
-
-def zoom(x: tf.Tensor) -> tf.Tensor:
-    # Generate 20 crop settings, ranging from a 1% to 20% crop.
-    scales = list(np.arange(0.8, 1.0, 0.01))
-    boxes = np.zeros((len(scales), 4))
-
-    for i, scale in enumerate(scales):
-        x1 = y1 = 0.5 - (0.5 * scale)
-        x2 = y2 = 0.5 + (0.5 * scale)
-        boxes[i] = [x1, y1, x2, y2]
-
-    def random_crop(img):
-        # Create different crops for an image
-        crops = tf.image.crop_and_resize([img], boxes=boxes, box_ind=np.zeros(len(scales)), crop_size=(32, 32))
-        # Return a random crop
-        return crops[tf.random_uniform(shape=[], minval=0, maxval=len(scales), dtype=tf.int32)]
-
-    choice = tf.random_uniform(shape=[], minval=0., maxval=1., dtype=tf.float32)
-
-    # Only apply cropping 50% of the time
-    return tf.cond(choice < 0.5, lambda: x, lambda: random_crop(x))
-
-
-data = (get_bounding_cropped() / 255.).astype(np.float32)
-print('data_shape: ', data.shape)
-dataset = tf.data.Dataset.from_tensor_slices(data)
-augmentations = [flip, color, zoom, rotate]
-
-for f in augmentations:
-    dataset = dataset.map(lambda x: tf.cond(tf.random_uniform([], 0, 1) > 0.75, lambda: f(x), lambda: x),
-                          num_parallel_calls=4)
-dataset = dataset.map(lambda x: tf.clip_by_value(x, 0, 1))
+dataset = tf.data.Dataset.from_tensor_slices(all_images)
+dataset = dataset.map(_parse_fn)
 dataset = dataset.batch(batch_size)
 dataset = dataset.shuffle(1000)
-
 iterator = dataset.make_initializable_iterator()
-data_init_op = iterator.initializer
+iter_init_op = iterator.initializer
 
 X = tf.placeholder(tf.float32, [None, image_size, image_size, 3])
 is_training = tf.placeholder_with_default(False, shape=())
@@ -169,10 +133,25 @@ config.allow_soft_placement = True
 with tf.Session(config=config) as sess:
     init.run()
     for epoch in range(n_epochs):
-        sess.run(data_init_op)
+        sess.run(iter_init_op)
+        loss_val = 0
+        X_batch = None
         while True:
             try:
                 X_batch = iterator.get_next()
                 sess.run(training_op, feed_dict={X: X_batch, is_training: True})
+                loss_val = reconstruction_loss.eval(feed_dict={X: X_batch})
             except tf.errors.OutOfRangeError:
                 break
+
+        print('Epoch: ', epoch, '\tLoss: ', loss_val)
+
+        X_test = X_batch[:5]
+        samples = outputs.eval(feed_dict={X: X_test})
+        plt.figure(figsize=(15, 3))
+        for i, img in enumerate(samples):
+            plt.subplot(1, 5, i + 1)
+            img = np.array(img).clip(0, 1)
+            plt.axis('off')
+            plt.imshow(img)
+        plt.show()
