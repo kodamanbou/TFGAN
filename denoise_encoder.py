@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import random
 
 image_size = 64
-n_epochs = 50
+n_epochs = 300
 batch_size = 256
 learning_rate = 0.001
 dropout_rate = 0.3
@@ -69,18 +69,15 @@ conv1 = tf.layers.conv2d(X_drop, kernel_size=5, filters=64, strides=1, padding='
 
 pool1 = tf.layers.max_pooling2d(conv1, pool_size=(2, 2), strides=2, padding='same')
 
-conv2 = tf.layers.conv2d(pool1, kernel_size=5, filters=128, strides=1, padding='same')
-conv2 = tf.nn.leaky_relu(tf.layers.batch_normalization(conv2, training=is_training))
+conv2 = tf.layers.conv2d(pool1, kernel_size=5, filters=128, strides=1, padding='same', activation=tf.nn.leaky_relu)
 
 pool2 = tf.layers.max_pooling2d(conv2, pool_size=(2, 2), strides=2, padding='same')
 
-conv3 = tf.layers.conv2d(pool2, kernel_size=5, filters=256, strides=1, padding='same')
-conv3 = tf.nn.leaky_relu(tf.layers.batch_normalization(conv3, training=is_training))
+conv3 = tf.layers.conv2d(pool2, kernel_size=5, filters=256, strides=1, padding='same', activation=tf.nn.leaky_relu)
 
 pool3 = tf.layers.max_pooling2d(conv3, pool_size=(2, 2), strides=2, padding='same')
 
-conv4 = tf.layers.conv2d(pool3, kernel_size=5, filters=512, strides=1, padding='same')
-conv4 = tf.nn.leaky_relu(tf.layers.batch_normalization(conv4, training=is_training))
+conv4 = tf.layers.conv2d(pool3, kernel_size=5, filters=512, strides=1, padding='same', activation=tf.nn.leaky_relu)
 
 pool4 = tf.layers.max_pooling2d(conv4, pool_size=(2, 2), strides=2, padding='same')
 
@@ -88,16 +85,15 @@ hidden = tf.layers.flatten(pool4)
 hidden = tf.layers.dense(hidden, n_hidden_units)
 
 reshape = tf.reshape(hidden, [-1, 4, 4, 512])
-reshape = tf.nn.relu(tf.layers.batch_normalization(reshape, training=is_training))
 
-deconv1 = tf.layers.conv2d_transpose(reshape, kernel_size=5, filters=256, strides=2, padding='same')
-deconv1 = tf.nn.relu(tf.layers.batch_normalization(deconv1, training=is_training))
+deconv1 = tf.layers.conv2d_transpose(reshape, kernel_size=5, filters=256, strides=2, padding='same',
+                                     activation=tf.nn.relu)
 
-deconv2 = tf.layers.conv2d_transpose(deconv1, kernel_size=5, filters=128, strides=2, padding='same')
-deconv2 = tf.nn.relu(tf.layers.batch_normalization(deconv2, training=is_training))
+deconv2 = tf.layers.conv2d_transpose(deconv1, kernel_size=5, filters=128, strides=2, padding='same',
+                                     activation=tf.nn.relu)
 
-deconv3 = tf.layers.conv2d_transpose(deconv2, kernel_size=5, filters=64, strides=2, padding='same')
-deconv3 = tf.nn.relu(tf.layers.batch_normalization(deconv3, training=is_training))
+deconv3 = tf.layers.conv2d_transpose(deconv2, kernel_size=5, filters=64, strides=2, padding='same',
+                                     activation=tf.nn.relu)
 
 outputs = tf.layers.conv2d_transpose(deconv3, kernel_size=5, filters=3, strides=2, padding='same',
                                      activation=tf.nn.relu)
