@@ -17,7 +17,7 @@ root_annots = "../input/annotation/Annotation/"
 all_images = os.listdir(root_images)
 
 num_iteration = 1000000
-batch_size = 8
+batch_size = 32
 sample_size = 5
 z_dim = 100
 num_generate = 10000
@@ -191,7 +191,6 @@ if __name__ == '__main__':
 
             gs = sess.run(g.global_step)
             sess.run(g.d_train_op, feed_dict={g.x: batch, g.z: n, g.is_training: True})
-            sess.run(g.g_train_op, feed_dict={g.x: batch, g.z: n, g.is_training: True})
             sess.run(g.g_train_op, feed_dict={g.x: batch, g.z: n, g.is_training: True})
 
             if gs % 10000 == 0:

@@ -4,14 +4,13 @@ import os
 import glob
 import xml.etree.ElementTree as ET
 from PIL import Image
-import zipfile
-from imageio import imsave
 import matplotlib.pyplot as plt
+import random
 
 image_size = 64
-n_epochs = 10
-batch_size = 128
-learning_rate = 0.01
+n_epochs = 50
+batch_size = 256
+learning_rate = 0.001
 dropout_rate = 0.3
 n_generates = 10000
 n_hidden_units = 4 * 4 * 512
@@ -19,10 +18,10 @@ n_hidden_units = 4 * 4 * 512
 root_images = "../input/all-dogs/all-dogs/"
 root_annots = "../input/annotation/Annotation/"
 all_images = os.listdir(root_images)
+breed_map = {}
 
 
-def get_bboxes():
-    breed_map = {}
+def prepro():
     breeds = glob.glob(root_annots + '*')
     annotation = []
 
@@ -36,54 +35,32 @@ def get_bboxes():
 
     print(f'Total breeds：{len(breed_map)}')
 
-    bboxes = []
-    for filename in all_images:
-        bpath = root_annots + str(breed_map[filename.split("_")[0]]) + "/" + str(filename.split(".")[0])
-        tree = ET.parse(bpath)
-        root = tree.getroot()
-        objects = root.findall('object')
-        for o in objects:
-            bndbox = o.find('bndbox')  # reading bound box
-            xmin = int(bndbox.find('xmin').text)
-            ymin = int(bndbox.find('ymin').text)
-            xmax = int(bndbox.find('xmax').text)
-            ymax = int(bndbox.find('ymax').text)
-
-        bbox = [ymin, xmin, ymax, xmax]
-        bboxes.append(bbox)
-
-    return bboxes
-
 
 def read_image(image_name, height, width):
+    bpath = root_annots + str(breed_map[image_name.split("_")[0]]) + "/" + str(image_name.split(".")[0])
+    tree = ET.parse(bpath)
+    root = tree.getroot()
+    objects = root.findall('object')
+    for o in objects:
+        bndbox = o.find('bndbox')  # reading bound box
+        xmin = int(bndbox.find('xmin').text)
+        ymin = int(bndbox.find('ymin').text)
+        xmax = int(bndbox.find('xmax').text)
+        ymax = int(bndbox.find('ymax').text)
+
+    bbox = (xmin, ymin, xmax, ymax)
+
     image = Image.open(os.path.join(root_images, image_name))
+    image = image.crop(bbox)
     image = np.array(image.resize((height, width)))
+    # data augmentation.
+    if np.random.rand() > 0.7:
+        image = image[:, ::-1, :]
+    if np.random.rand() > 0.99:
+        image = np.invert(image)
+
     return image / 255.
 
-
-def _parse_fn(filename, bbox):
-    print(filename)
-    image = tf.image.decode_jpeg(tf.read_file(root_images + filename))
-    image = tf.image.crop_to_bounding_box(image, bbox[0], bbox[1], bbox[2], bbox[3])
-    image = tf.image.resize(image, size=(64, 64))
-    image = tf.image.random_flip_left_right(image)
-    image = tf.image.random_flip_up_down(image)
-    image = tf.image.random_hue(image, 0.08)
-    image = tf.image.random_saturation(image, 0.6, 1.6)
-    image = tf.image.random_brightness(image, 0.05)
-    image = tf.image.random_contrast(image, 0.7, 1.3)
-    image = tf.image.rot90(image, tf.random_uniform(shape=[], minval=0, maxval=4, dtype=tf.int32))
-    image = tf.clip_by_value(image, 0, 1)
-
-    return tf.cast(image, tf.float32)
-
-
-dataset = tf.data.Dataset.from_tensor_slices((all_images, get_bboxes()))
-dataset = dataset.map(_parse_fn)
-dataset = dataset.batch(batch_size)
-dataset = dataset.shuffle(1000)
-iterator = dataset.make_initializable_iterator()
-iter_init_op = iterator.initializer
 
 X = tf.placeholder(tf.float32, [None, image_size, image_size, 3])
 is_training = tf.placeholder_with_default(False, shape=())
@@ -137,27 +114,31 @@ config.gpu_options.allow_growth = True
 config.allow_soft_placement = True
 
 with tf.Session(config=config) as sess:
+    prepro()
     init.run()
     for epoch in range(n_epochs):
-        sess.run(iter_init_op)
-        loss_val = 0
-        X_batch = None
-        while True:
-            try:
-                X_batch = iterator.get_next()
-                sess.run(training_op, feed_dict={X: X_batch, is_training: True})
-                loss_val = reconstruction_loss.eval(feed_dict={X: X_batch})
-            except tf.errors.OutOfRangeError:
-                break
+        n_batches = len(all_images) // batch_size
+        offset = 0
+        for iteration in range(n_batches):
+            X_batch = np.array([
+                read_image(img, image_size, image_size)
+                for img in all_images[offset:offset + batch_size]
+            ])
+            sess.run(training_op, feed_dict={X: X_batch, is_training: True})
+            loss_val = reconstruction_loss.eval(feed_dict={X: X_batch})
 
-        print('Epoch: ', epoch, '\tLoss: ', loss_val)
+            if iteration == n_batches - 1:
+                print('Epoch: ', epoch, '\tLoss: ', loss_val)
 
-        X_test = X_batch[:5]
-        samples = outputs.eval(feed_dict={X: X_test})
+        X_test = np.array([
+            read_image(img, image_size, image_size)
+            for img in random.sample(all_images, 5)
+        ])
+        imgs = outputs.eval(feed_dict={X: X_test})
         plt.figure(figsize=(15, 3))
-        for i, img in enumerate(samples):
+        for i, sample in enumerate(imgs):
             plt.subplot(1, 5, i + 1)
-            img = np.array(img).clip(0, 1)
+            sample = np.array(sample).clip(0, 1)
             plt.axis('off')
-            plt.imshow(img)
+            plt.imshow(sample)
         plt.show()
