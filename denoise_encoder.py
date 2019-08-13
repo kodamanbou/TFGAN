@@ -21,7 +21,7 @@ root_annots = "../input/annotation/Annotation/"
 all_images = os.listdir(root_images)
 
 
-def prepro():
+def get_bboxes():
     breed_map = {}
     breeds = glob.glob(root_annots + '*')
     annotation = []
@@ -35,7 +35,24 @@ def prepro():
         breed_map.setdefault(index, breed)
 
     print(f'Total breeds：{len(breed_map)}')
-    return breed_map
+
+    bboxes = []
+    for filename in all_images:
+        bpath = root_annots + str(breed_map[filename.split("_")[0]]) + "/" + str(filename.split(".")[0])
+        tree = ET.parse(bpath)
+        root = tree.getroot()
+        objects = root.findall('object')
+        for o in objects:
+            bndbox = o.find('bndbox')  # reading bound box
+            xmin = int(bndbox.find('xmin').text)
+            ymin = int(bndbox.find('ymin').text)
+            xmax = int(bndbox.find('xmax').text)
+            ymax = int(bndbox.find('ymax').text)
+
+        bbox = [ymin, xmin, ymax, xmax]
+        bboxes.append(bbox)
+
+    return bboxes
 
 
 def read_image(image_name, height, width):
@@ -44,23 +61,11 @@ def read_image(image_name, height, width):
     return image / 255.
 
 
-def _parse_fn(filename):
-    breed_map = prepro()
-    bpath = root_annots + str(breed_map[filename.split("_")[0]]) + "/" + str(filename.split(".")[0])
-    tree = ET.parse(bpath)
-    root = tree.getroot()
-    objects = root.findall('object')
-    for o in objects:
-        bndbox = o.find('bndbox')  # reading bound box
-        xmin = int(bndbox.find('xmin').text)
-        ymin = int(bndbox.find('ymin').text)
-        xmax = int(bndbox.find('xmax').text)
-        ymax = int(bndbox.find('ymax').text)
-
-    bbox = (xmin, ymin, xmax, ymax)
-
+def _parse_fn(filename, bbox):
+    print(filename)
     image = tf.image.decode_jpeg(tf.read_file(root_images + filename))
-    image = tf.image.crop_and_resize(image, bbox, crop_size=(64, 64))
+    image = tf.image.crop_to_bounding_box(image, bbox[0], bbox[1], bbox[2], bbox[3])
+    image = tf.image.resize(image, size=(64, 64))
     image = tf.image.random_flip_left_right(image)
     image = tf.image.random_flip_up_down(image)
     image = tf.image.random_hue(image, 0.08)
@@ -68,11 +73,12 @@ def _parse_fn(filename):
     image = tf.image.random_brightness(image, 0.05)
     image = tf.image.random_contrast(image, 0.7, 1.3)
     image = tf.image.rot90(image, tf.random_uniform(shape=[], minval=0, maxval=4, dtype=tf.int32))
+    image = tf.clip_by_value(image, 0, 1)
 
     return tf.cast(image, tf.float32)
 
 
-dataset = tf.data.Dataset.from_tensor_slices(all_images)
+dataset = tf.data.Dataset.from_tensor_slices((all_images, get_bboxes()))
 dataset = dataset.map(_parse_fn)
 dataset = dataset.batch(batch_size)
 dataset = dataset.shuffle(1000)
