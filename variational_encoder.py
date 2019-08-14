@@ -10,10 +10,10 @@ import matplotlib.pyplot as plt
 
 image_size = 64
 n_epochs = 300
-batch_size = 256
+batch_size = 32
 learning_rate = 0.001
 n_generates = 10000
-n_hidden_units = 4 * 4 * 512
+n_hidden_units = 4096
 
 root_images = "../input/all-dogs/all-dogs/"
 root_annots = "../input/annotation/Annotation/"
@@ -83,7 +83,9 @@ hidden_sigma = tf.layers.dense(hidden, n_hidden_units)
 noise = tf.random_normal(tf.shape(hidden_sigma), dtype=tf.float32)
 hidden = hidden_mean + hidden_sigma * noise
 
-reshape = tf.reshape(hidden, [-1, 4, 4, 512])
+hidden2 = tf.layers.dense(hidden, 4 * 4 * 512, activation=tf.nn.elu)
+
+reshape = tf.reshape(hidden2, [-1, 4, 4, 512])
 reshape = tf.nn.relu(tf.layers.batch_normalization(reshape, training=is_training))
 
 deconv1 = tf.layers.conv2d_transpose(reshape, kernel_size=5, filters=256, strides=2, padding='same')
