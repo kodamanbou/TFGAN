@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 image_size = 64
 n_epochs = 10
-batch_size = 4
+batch_size = 8
 learning_rate = 0.001
 n_generates = 10000
 n_hidden_units = 4096
